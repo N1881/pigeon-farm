@@ -231,38 +231,22 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);direc
 </head>
 <body>
 
-<div id="loginScreen" style="
-  position:fixed;inset:0;background:#0d1117;z-index:9999;
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Cairo',sans-serif;
-">
-  <div style="
-    background:#161b22;border:1px solid #30363d;border-radius:20px;
-    padding:40px 36px;max-width:380px;width:90%;text-align:center;
-    box-shadow:0 24px 64px rgba(0,0,0,.5);
-  ">
+<div id="loginScreen" style="position:fixed;inset:0;background:#0d1117;z-index:9999;display:flex;align-items:center;justify-content:center;font-family:'Cairo',sans-serif;">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:20px;padding:40px 36px;max-width:380px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.5);">
     <div style="font-size:56px;margin-bottom:14px">🕊️</div>
     <div style="font-size:21px;font-weight:700;color:#f0883e;margin-bottom:6px">نظام إدارة الحمام</div>
     <div style="font-size:13px;color:#8b949e;margin-bottom:28px">أدخل كلمة المرور للمتابعة</div>
     <input id="pwInput" type="password" placeholder="🔑 كلمة المرور"
       onkeydown="if(event.key==='Enter')checkPW()"
-      style="width:100%;background:#1c2128;border:2px solid #30363d;color:#e6edf3;
-        padding:13px 16px;border-radius:10px;font-family:'Cairo',sans-serif;font-size:15px;
-        outline:none;text-align:center;letter-spacing:4px;margin-bottom:14px;transition:border-color .2s;"
-      onfocus="this.style.borderColor='#f0883e'"
-      onblur="this.style.borderColor='#30363d'">
+      style="width:100%;background:#1c2128;border:2px solid #30363d;color:#e6edf3;padding:13px 16px;border-radius:10px;font-family:'Cairo',sans-serif;font-size:15px;outline:none;text-align:center;letter-spacing:4px;margin-bottom:14px;transition:border-color .2s;"
+      onfocus="this.style.borderColor='#f0883e'" onblur="this.style.borderColor='#30363d'">
     <div id="pwError" style="color:#f85149;font-size:12px;margin-bottom:14px;min-height:16px;opacity:0;transition:opacity .2s;">⚠️ كلمة المرور غير صحيحة</div>
-    <button onclick="checkPW()" style="width:100%;padding:13px;background:#f0883e;color:#fff;
-      border:none;border-radius:10px;font-family:'Cairo',sans-serif;font-size:15px;font-weight:700;
-      cursor:pointer;transition:background .15s;"
-      onmouseover="this.style.background='#d86b20'"
-      onmouseout="this.style.background='#f0883e'">دخول ←</button>
+    <button onclick="checkPW()" style="width:100%;padding:13px;background:#f0883e;color:#fff;border:none;border-radius:10px;font-family:'Cairo',sans-serif;font-size:15px;font-weight:700;cursor:pointer;"
+      onmouseover="this.style.background='#d86b20'" onmouseout="this.style.background='#f0883e'">دخول ←</button>
     <div style="font-size:11px;color:#8b949e;margin-top:20px;opacity:.4">🔒 محمي بكلمة مرور</div>
   </div>
 </div>
-<style>
-@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
-</style>
+<style>@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}</style>
 <script>
 function simpleHash(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return Math.abs(h).toString(16);}
 const _H=simpleHash('farm2026');
@@ -544,16 +528,10 @@ async function loadData() {
     // لكن قد تختلف — نجرب جلب sheet list أولاً
     
     setStep('تحميل بيانات العنابر...', 30);
-    // gid=0 للفهرس، نجرب gids لبيانات المرجع
-    let ref2 = null;
-    for(const gid of [1,2,3,4,5]) {
-      const d = await fetchSheet(gid);
-      if(d && d.length > 10 && isRef(d)) { ref2 = d; break; }
-    }
-    if(!ref2) throw new Error('فشل تحميل بيانات المرجع');
+    const ref2 = await fetchSheet(2137440931);
+    if(!ref2 || ref2.length < 5) throw new Error('فشل تحميل بيانات المرجع');
     
     setStep('تحميل سجلات الإدخال اليومي...', 60);
-    // gid المحدد من المستخدم
     const daily = await fetchSheet(843320239);
     if(!daily || daily.length < 5) throw new Error('فشل تحميل سجلات الإدخال اليومي');
     
@@ -572,12 +550,6 @@ async function loadData() {
   } catch(err) {
     showError(err.message);
   }
-}
-
-function isRef(rows) {
-  if(!rows || rows.length < 2) return false;
-  const header = rows[0];
-  return header.some(c => c && (c.includes('عنبر') || c.includes('سلالة') || c.includes('جوز') || c.includes('غرفة')));
 }
 
 function isDaily(rows) {
