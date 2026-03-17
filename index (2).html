@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام إدارة الحمام — مباشر</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2128;--border:#30363d;
+  --text:#e6edf3;--text2:#8b949e;--accent:#f0883e;--accent2:#58a6ff;
+  --green:#3fb950;--red:#f85149;--yellow:#d29922;--purple:#bc8cff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);direction:rtl;min-height:100vh}
+
+/* LOADING */
+#loadScreen{
+  position:fixed;inset:0;background:var(--bg);z-index:999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+}
+.load-icon{font-size:64px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:.7}}
+.load-title{font-size:22px;font-weight:700;color:var(--accent)}
+.load-sub{font-size:14px;color:var(--text2)}
+.progress-bar{width:300px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;width:0%}
+.load-step{font-size:12px;color:var(--text2);text-align:center}
+
+/* ERROR */
+#errorScreen{
+  display:none;position:fixed;inset:0;background:var(--bg);z-index:998;
+  align-items:center;justify-content:center;flex-direction:column;gap:16px;
+}
+.error-box{
+  background:var(--bg2);border:1px solid rgba(248,81,73,.3);border-radius:16px;
+  padding:32px;max-width:500px;text-align:center;
+}
+.error-icon{font-size:48px;margin-bottom:12px}
+.error-title{font-size:18px;font-weight:700;color:var(--red);margin-bottom:8px}
+.error-msg{font-size:13px;color:var(--text2);line-height:1.6}
+.btn-retry{
+  margin-top:16px;padding:10px 24px;background:var(--accent);color:#fff;
+  border:none;border-radius:8px;font-family:'Cairo',sans-serif;font-size:14px;
+  font-weight:700;cursor:pointer;
+}
+
+/* LAYOUT */
+.layout{display:flex;min-height:100vh}
+.sidebar{
+  width:240px;min-width:240px;background:var(--bg2);
+  border-left:1px solid var(--border);display:flex;flex-direction:column;
+  position:fixed;height:100vh;overflow-y:auto;z-index:100;
+}
+.sidebar-logo{padding:18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.logo-icon{font-size:28px}
+.logo-text{font-size:14px;font-weight:700;color:var(--accent)}
+.logo-sub{font-size:11px;color:var(--text2)}
+.live-dot{
+  width:8px;height:8px;background:var(--green);border-radius:50%;
+  margin-right:auto;box-shadow:0 0 6px var(--green);
+  animation:blink 2s infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.nav-section{padding:10px 8px 4px}
+.nav-label{font-size:10px;color:var(--text2);padding:0 8px 6px;text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);
+  transition:all .15s;margin-bottom:2px;
+}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:rgba(240,136,62,.12);color:var(--accent);font-weight:600}
+.nav-icon{font-size:15px;min-width:20px;text-align:center}
+
+.sidebar-footer{margin-top:auto;padding:12px;border-top:1px solid var(--border)}
+.month-sel label{font-size:11px;color:var(--text2);display:block;margin-bottom:5px}
+.month-sel select{
+  width:100%;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);padding:7px 10px;border-radius:8px;
+  font-family:'Cairo',sans-serif;font-size:13px;cursor:pointer;
+}
+.refresh-btn{
+  width:100%;margin-top:8px;padding:7px;background:var(--bg3);
+  border:1px solid var(--border);color:var(--text2);border-radius:8px;
+  font-family:'Cairo',sans-serif;font-size:12px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  transition:all .15s;
+}
+.refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
+.last-update{font-size:10px;color:var(--text2);text-align:center;margin-top:6px}
+
+.main{margin-right:240px;flex:1}
+.topbar{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:14px 28px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;
+}
+.topbar-title{font-size:18px;font-weight:700}
+.topbar-sub{font-size:12px;color:var(--text2);margin-top:1px}
+.badges{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.badge{padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700}
+.badge-orange{background:rgba(240,136,62,.12);color:var(--accent)}
+.badge-green{background:rgba(63,185,80,.12);color:var(--green)}
+.badge-blue{background:rgba(88,166,255,.12);color:var(--accent2)}
+
+.content{padding:22px 28px}
+.section{display:none}.section.active{display:block}
+
+/* CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px;transition:all .2s}
+.kpi:hover{border-color:var(--accent);transform:translateY(-2px)}
+.kpi-lbl{font-size:11px;color:var(--text2);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px}
+.kpi-val{font-size:30px;font-weight:900;line-height:1}
+.kpi-sub{font-size:11px;color:var(--text2);margin-top:5px}
+.orange{color:var(--accent)}.blue{color:var(--accent2)}.green{color:var(--green)}.red{color:var(--red)}.purple{color:var(--purple)}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px}
+.chart-title{font-size:14px;font-weight:700;margin-bottom:3px}
+.chart-sub{font-size:11px;color:var(--text2);margin-bottom:14px}
+.bar-chart{display:flex;flex-direction:column;gap:7px}
+.bar-row{display:flex;align-items:center;gap:8px}
+.bar-lbl{font-size:12px;color:var(--text2);min-width:80px;text-align:right}
+.bar-track{flex:1;background:var(--bg3);border-radius:4px;height:22px;overflow:hidden}
+.bar-fill{
+  height:100%;border-radius:4px;display:flex;align-items:center;
+  padding-right:8px;font-size:11px;font-weight:700;color:#fff;
+  transition:width .8s cubic-bezier(.4,0,.2,1);
+}
+.bf-orange{background:linear-gradient(90deg,#f0883e,#d86b20)}
+.bf-blue{background:linear-gradient(90deg,#58a6ff,#2d7dd2)}
+.bf-green{background:linear-gradient(90deg,#3fb950,#248a3c)}
+.bf-purple{background:linear-gradient(90deg,#bc8cff,#7c4dca)}
+.bf-red{background:linear-gradient(90deg,#f85149,#c0392b)}
+
+/* TABLE */
+.table-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:22px}
+.table-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.table-title{font-size:14px;font-weight:700}
+.tbl-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.srch{
+  background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:6px 12px;border-radius:8px;font-family:'Cairo',sans-serif;
+  font-size:12px;outline:none;width:160px;
+}
+.srch:focus{border-color:var(--accent)}
+.fsel{
+  background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  padding:6px 10px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:12px;cursor:pointer;
+}
+.dtbl{width:100%;border-collapse:collapse}
+.dtbl th{background:var(--bg3);padding:9px 14px;text-align:right;font-size:11px;color:var(--text2);font-weight:600;border-bottom:1px solid var(--border)}
+.dtbl td{padding:9px 14px;font-size:12px;border-bottom:1px solid rgba(48,54,61,.5)}
+.dtbl tr:last-child td{border-bottom:none}
+.dtbl tr:hover td{background:rgba(255,255,255,.02)}
+.num{font-weight:700;font-variant-numeric:tabular-nums}
+.breed-tag{display:inline-flex;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.bz{background:rgba(88,166,255,.15);color:var(--accent2)}
+.bf{background:rgba(240,136,62,.15);color:var(--accent)}
+.bm{background:rgba(188,140,255,.15);color:var(--purple)}
+.pag{padding:10px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--text2)}
+.pag-btns{display:flex;gap:4px}
+.pbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:3px 9px;border-radius:6px;cursor:pointer;font-size:12px}
+.pbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pbtn:hover:not(.active){background:var(--bg3);color:var(--text)}
+
+/* BARN GRID */
+.barn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.barn-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:all .2s}
+.barn-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.bc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.bc-name{font-size:15px;font-weight:700}
+.bc-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.bc-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.bc-stat{background:var(--bg3);border-radius:8px;padding:8px}
+.bc-stat-lbl{font-size:10px;color:var(--text2)}
+.bc-stat-val{font-size:17px;font-weight:800;margin-top:2px}
+.progress-wrap{margin-top:6px}
+.prog-lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:4px}
+.prog-track{background:var(--bg3);border-radius:3px;height:5px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),#d86b20)}
+
+/* ROOMS */
+.rooms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:5px;max-height:480px;overflow-y:auto}
+.room-cell{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 3px;text-align:center;cursor:pointer;transition:all .12s}
+.room-cell:hover{border-color:var(--accent)}
+.rc-prod{border-color:rgba(63,185,80,.35)}
+.rc-dead{border-color:rgba(248,81,73,.35)}
+.rc-both{border-color:rgba(210,153,34,.45)}
+.rc-num{font-size:10px;font-weight:700;color:var(--text2)}
+.rc-val{font-size:15px;font-weight:900;color:var(--green)}
+.rc-dead-v{font-size:10px;color:var(--red)}
+
+/* QUALITY */
+.q-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.q-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:13px}
+.q-row{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:12px}
+.q-lbl{color:var(--text2)}
+
+/* ANNUAL */
+.ann-wrap{overflow-x:auto}
+.ann-tbl{width:100%;border-collapse:collapse;white-space:nowrap}
+.ann-tbl th{background:var(--bg3);padding:9px 12px;text-align:center;font-size:11px;color:var(--text2);font-weight:600;border-bottom:1px solid var(--border);border-left:1px solid var(--border)}
+.ann-tbl td{padding:8px 12px;font-size:12px;text-align:center;border-bottom:1px solid rgba(48,54,61,.5);border-left:1px solid rgba(48,54,61,.4)}
+.ann-tbl tr:hover td{background:rgba(255,255,255,.02)}
+.ann-tbl .m-col{text-align:right;font-weight:700}
+.ann-tbl .tot-row td{background:var(--bg3);font-weight:700;border-top:2px solid var(--border)}
+.h-hi{color:var(--green);font-weight:700}.h-mi{color:var(--yellow)}.h-lo{color:var(--red)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto}
+.modal-close{float:left;cursor:pointer;color:var(--text2);font-size:20px;line-height:1}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:16px}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+@media(max-width:768px){
+  .sidebar{display:none}.main{margin-right:0}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .charts-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="loginScreen" style="position:fixed;inset:0;background:#0d1117;z-index:9999;display:flex;align-items:center;justify-content:center;font-family:'Cairo',sans-serif;">
+  <div style="background:#161b22;border:1px solid #30363d;border-radius:20px;padding:40px 36px;max-width:380px;width:90%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.5);">
+    <div style="font-size:56px;margin-bottom:14px">🕊️</div>
+    <div style="font-size:21px;font-weight:700;color:#f0883e;margin-bottom:6px">نظام إدارة الحمام</div>
+    <div style="font-size:13px;color:#8b949e;margin-bottom:28px">أدخل كلمة المرور للمتابعة</div>
+    <input id="pwInput" type="password" placeholder="🔑 كلمة المرور"
+      onkeydown="if(event.key==='Enter')checkPW()"
+      style="width:100%;background:#1c2128;border:2px solid #30363d;color:#e6edf3;padding:13px 16px;border-radius:10px;font-family:'Cairo',sans-serif;font-size:15px;outline:none;text-align:center;letter-spacing:4px;margin-bottom:14px;transition:border-color .2s;"
+      onfocus="this.style.borderColor='#f0883e'" onblur="this.style.borderColor='#30363d'">
+    <div id="pwError" style="color:#f85149;font-size:12px;margin-bottom:14px;min-height:16px;opacity:0;transition:opacity .2s;">⚠️ كلمة المرور غير صحيحة</div>
+    <button onclick="checkPW()" style="width:100%;padding:13px;background:#f0883e;color:#fff;border:none;border-radius:10px;font-family:'Cairo',sans-serif;font-size:15px;font-weight:700;cursor:pointer;"
+      onmouseover="this.style.background='#d86b20'" onmouseout="this.style.background='#f0883e'">دخول ←</button>
+    <div style="font-size:11px;color:#8b949e;margin-top:20px;opacity:.4">🔒 محمي بكلمة مرور</div>
+  </div>
+</div>
+<style>@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}</style>
+<script>
+function simpleHash(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return Math.abs(h).toString(16);}
+const _H=simpleHash('farm2026');
+function checkPW(){
+  const v=document.getElementById('pwInput').value;
+  const err=document.getElementById('pwError');
+  if(simpleHash(v)===_H){
+    sessionStorage.setItem('_pa',_H);
+    const ls=document.getElementById('loginScreen');
+    ls.style.transition='opacity .4s';ls.style.opacity='0';
+    setTimeout(()=>ls.style.display='none',400);
+  } else {
+    err.style.opacity='1';
+    document.getElementById('pwInput').style.borderColor='#f85149';
+    document.getElementById('pwInput').style.animation='shake .3s';
+    document.getElementById('pwInput').value='';
+    setTimeout(()=>{err.style.opacity='0';document.getElementById('pwInput').style.borderColor='#30363d';document.getElementById('pwInput').style.animation='';},2500);
+  }
+}
+if(sessionStorage.getItem('_pa')===_H){document.getElementById('loginScreen').style.display='none';}
+</script>
+
+
+<!-- LOADING -->
+<div id="loadScreen">
+  <div class="load-icon">🕊️</div>
+  <div class="load-title">نظام إدارة الحمام</div>
+  <div class="load-sub">جاري تحميل البيانات من Google Sheets...</div>
+  <div class="progress-bar"><div class="progress-fill" id="progBar"></div></div>
+  <div class="load-step" id="loadStep">الاتصال بـ Google Sheets...</div>
+</div>
+
+<!-- ERROR -->
+<div id="errorScreen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:998;display:none;align-items:center;justify-content:center">
+  <div class="error-box">
+    <div class="error-icon">⚠️</div>
+    <div class="error-title">تعذّر تحميل البيانات</div>
+    <div class="error-msg" id="errMsg">تأكد من أن ملف Google Sheets مشارك بشكل عام (أي شخص لديه الرابط - مشاهد)</div>
+    <button class="btn-retry" onclick="loadData()">🔄 إعادة المحاولة</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="layout" id="app" style="display:none">
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">🕊️</div>
+    <div style="flex:1">
+      <div class="logo-text">نظام الحمام</div>
+      <div class="logo-sub">مرتبط بـ Google Sheets</div>
+    </div>
+    <div class="live-dot" title="متصل"></div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">الرئيسية</div>
+    <div class="nav-item active" onclick="nav('dashboard',this)"><span class="nav-icon">📊</span> لوحة التحكم</div>
+    <div class="nav-item" onclick="nav('barns',this)"><span class="nav-icon">🏠</span> العنابر <span id="barnCountBadge" style="margin-right:auto;background:var(--accent);color:#fff;font-size:10px;padding:1px 6px;border-radius:99px;font-weight:700"></span></div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">البيانات</div>
+    <div class="nav-item" onclick="nav('daily',this)"><span class="nav-icon">📋</span> الإدخال اليومي</div>
+    <div class="nav-item" onclick="nav('rooms',this)"><span class="nav-icon">🏡</span> خريطة الغرف</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">التقارير</div>
+    <div class="nav-item" onclick="nav('annual',this)"><span class="nav-icon">📅</span> الملخص السنوي</div>
+    <div class="nav-item" onclick="nav('quality',this)"><span class="nav-icon">⭐</span> تقرير الجودة</div>
+    <div class="nav-item" onclick="nav('compare',this)"><span class="nav-icon">📈</span> مقارنة العنابر</div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="month-sel">
+      <label>الشهر المعروض</label>
+      <select id="gMonth" onchange="refreshView()">
+        <option value="1">يناير</option><option value="2">فبراير</option>
+        <option value="3" selected>مارس</option><option value="4">أبريل</option>
+        <option value="5">مايو</option><option value="6">يونيو</option>
+        <option value="7">يوليو</option><option value="8">أغسطس</option>
+        <option value="9">سبتمبر</option><option value="10">أكتوبر</option>
+        <option value="11">نوفمبر</option><option value="12">ديسمبر</option>
+      </select>
+    </div>
+    <button class="refresh-btn" onclick="loadData()">🔄 تحديث من Sheets</button>
+    <div class="last-update" id="lastUpdate">—</div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="pgTitle">لوحة التحكم</div>
+      <div class="topbar-sub" id="pgSub">جاري التحميل...</div>
+    </div>
+    <div class="badges">
+      <span class="badge badge-orange" id="tb1">—</span>
+      <span class="badge badge-green" id="tb2">—</span>
+      <span class="badge badge-blue" id="tb3">— عنبر</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <section id="sec-dashboard" class="section active">
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-lbl">🐣 فراخ الشهر</div><div class="kpi-val orange" id="k1">—</div><div class="kpi-sub" id="k1s">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">💀 نافق الشهر</div><div class="kpi-val red" id="k2">—</div><div class="kpi-sub" id="k2s">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">🕊️ إجمالي الأجواز</div><div class="kpi-val blue" id="k3">—</div><div class="kpi-sub" id="k3s">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">🏠 الغرف المشغولة</div><div class="kpi-val green" id="k4">—</div><div class="kpi-sub" id="k4s">—</div></div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card"><div class="chart-title">الإنتاج حسب السلالة</div><div class="chart-sub" id="dc1s">—</div><div class="bar-chart" id="breedChart"></div></div>
+        <div class="chart-card"><div class="chart-title">أعلى 8 عنابر إنتاجاً</div><div class="chart-sub" id="dc2s">—</div><div class="bar-chart" id="barnRankChart"></div></div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card"><div class="chart-title">توزيع الإنتاج</div><div class="chart-sub">عدد الغرف حسب كمية الفراخ</div><div class="bar-chart" id="distChart"></div></div>
+        <div class="chart-card"><div class="chart-title">مؤشرات الصحة</div><div class="chart-sub">نسب النافق</div><div id="healthDiv"></div></div>
+      </div>
+    </section>
+
+    <!-- BARNS -->
+    <section id="sec-barns" class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div><div style="font-size:15px;font-weight:700">العنابر والدفعات</div><div style="font-size:12px;color:var(--text2)" id="barnSubtitle">—</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="srch" placeholder="🔍 بحث..." id="barnQ" oninput="renderBarns()">
+          <select class="fsel" id="barnBreed" onchange="renderBarns()">
+            <option value="">كل السلالات</option>
+            <option value="زاجل">زاجل</option>
+            <option value="فرنسي">فرنسي</option>
+            <option value="مكس">مكس</option>
+          </select>
+        </div>
+      </div>
+      <div class="barn-grid" id="barnGrid"></div>
+    </section>
+
+    <!-- DAILY -->
+    <section id="sec-daily" class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div><div style="font-size:15px;font-weight:700">سجلات الإدخال اليومي</div><div style="font-size:12px;color:var(--text2)" id="dailySubtitle">—</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input class="srch" placeholder="🔍 رقم الغرفة..." id="dailyQ" oninput="renderDaily()">
+          <select class="fsel" id="dailyMonthF" onchange="renderDaily()">
+            <option value="">كل الأشهر</option>
+          </select>
+          <select class="fsel" id="dailyTypeF" onchange="renderDaily()">
+            <option value="">كل الحالات</option>
+            <option value="chicks">فيها إنتاج</option>
+            <option value="dead">فيها نافق</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-card">
+        <div style="overflow-x:auto">
+          <table class="dtbl">
+            <thead><tr>
+              <th>#</th><th>الشهر</th><th>الغرفة</th><th>التاريخ</th>
+              <th>🐣 فراخ</th><th>💀 ذكور</th><th>💀 إناث</th><th>🐥 صغار</th>
+              <th>العنبر</th><th>السلالة</th>
+            </tr></thead>
+            <tbody id="dailyBody"></tbody>
+          </table>
+        </div>
+        <div class="pag"><span id="dailyPagInfo">—</span><div class="pag-btns" id="dailyPagBtns"></div></div>
+      </div>
+    </section>
+
+    <!-- ROOMS -->
+    <section id="sec-rooms" class="section">
+      <div class="kpi-grid" style="margin-bottom:18px">
+        <div class="kpi"><div class="kpi-lbl">إجمالي الغرف</div><div class="kpi-val blue" id="rk1">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">غرف مشغولة</div><div class="kpi-val green" id="rk2">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">غرف شاغرة</div><div class="kpi-val orange" id="rk3">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">غرف لها سجلات</div><div class="kpi-val purple" id="rk4">—</div></div>
+      </div>
+      <div class="table-card">
+        <div class="table-head">
+          <div class="table-title">خريطة الغرف</div>
+          <div style="font-size:11px;color:var(--text2)">
+            <span style="color:var(--green)">■</span> إنتاج &nbsp;
+            <span style="color:var(--red)">■</span> نافق &nbsp;
+            <span style="color:var(--yellow)">■</span> كلاهما &nbsp;
+            <span style="color:var(--border)">■</span> بدون
+          </div>
+        </div>
+        <div style="padding:14px"><div class="rooms-grid" id="roomsGrid"></div></div>
+      </div>
+    </section>
+
+    <!-- ANNUAL -->
+    <section id="sec-annual" class="section">
+      <div class="table-card">
+        <div class="table-head"><div class="table-title">الملخص السنوي</div></div>
+        <div class="ann-wrap">
+          <table class="ann-tbl">
+            <thead><tr>
+              <th>الشهر</th><th>🐣 فراخ</th><th>فرخ/جوز</th><th>تقييم</th>
+              <th>نافق ذكور</th><th>نافق إناث</th><th>نافق صغار</th><th>إجمالي النافق</th>
+              <th>زاجل</th><th>فرنسي</th><th>مكس</th>
+            </tr></thead>
+            <tbody id="annualBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUALITY -->
+    <section id="sec-quality" class="section">
+      <div class="kpi-grid" style="margin-bottom:18px">
+        <div class="kpi"><div class="kpi-lbl">⭐⭐⭐ ممتاز</div><div class="kpi-val green" id="qq3">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">⭐⭐ جيد</div><div class="kpi-val" style="color:var(--yellow)" id="qq2">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">⭐ مقبول</div><div class="kpi-val orange" id="qq1">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">⚠️ ضعيف</div><div class="kpi-val red" id="qq0">—</div></div>
+      </div>
+      <div class="q-grid" id="qualityGrid"></div>
+    </section>
+
+    <!-- COMPARE -->
+    <section id="sec-compare" class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div><div style="font-size:15px;font-weight:700">مقارنة العنابر</div></div>
+        <select class="fsel" id="sortBy" onchange="renderCompare()">
+          <option value="chicks">ترتيب: الفراخ ↓</option>
+          <option value="rate">ترتيب: فرخ/جوز ↓</option>
+          <option value="dead">ترتيب: النافق ↓</option>
+        </select>
+      </div>
+      <div class="table-card">
+        <div style="overflow-x:auto">
+          <table class="dtbl">
+            <thead><tr>
+              <th>#</th><th>الدفعة</th><th>العنبر</th><th>السلالة</th>
+              <th>🐣 فراخ</th><th>فرخ/جوز</th><th>الأجواز</th>
+              <th>نافق</th><th>نسبة النافق%</th><th>تقييم</th>
+            </tr></thead>
+            <tbody id="compareBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOv" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><span class="modal-close" onclick="closeModal()">✕</span><div id="modalBody"></div></div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const SHEET_ID = '1RUqLvWEMsztVOz1nbe5toHAtxNXMcb8MzYQq-9t5h0c';
+const MONTHS = ['','يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+// URLs لقراءة البيانات
+// نستخدم gviz/tq API الذي يعمل مع الملفات العامة
+function sheetUrl(gid) {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
+}
+
+// ===== STATE =====
+let BATCHES = [], ENTRIES = [], ROOM_BATCH = {}, ROOM_BREED = {};
+let dailyPage = 0, filteredEntries = [];
+let currentSection = 'dashboard';
+const PAGE_SIZE = 50;
+
+// ===== LOAD DATA =====
+async function loadData() {
+  showLoad();
+  setStep('الاتصال بـ Google Sheets...', 10);
+
+  try {
+    // نحتاج sheet GIDs — نجرب القيم الشائعة
+    // في Google Sheets بعد الاستيراد: الشيت الأول = gid=0
+    // لكن قد تختلف — نجرب جلب sheet list أولاً
+    
+    setStep('تحميل بيانات العنابر...', 30);
+    const ref2 = await fetchSheet(2137440931);
+    if(!ref2 || ref2.length < 5) throw new Error('فشل تحميل بيانات المرجع');
+    
+    setStep('تحميل سجلات الإدخال اليومي...', 60);
+    const daily = await fetchSheet(843320239);
+    if(!daily || daily.length < 5) throw new Error('فشل تحميل سجلات الإدخال اليومي');
+    
+    setStep('معالجة البيانات...', 85);
+    parseBatches(ref2);
+    parseEntries(daily);
+    buildMaps();
+    
+    setStep('جاهز! ✅', 100);
+    await sleep(400);
+    
+    showApp();
+    renderAll();
+    document.getElementById('lastUpdate').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+    
+  } catch(err) {
+    showError(err.message);
+  }
+}
+
+function isDaily(rows) {
+  // نتحقق أن هذا شيت الإدخال اليومي وليس غيره
+  if(!rows || rows.length < 2) return false;
+  const header = rows[0];
+  return header.some(c => c && (c.includes('شهر') || c.includes('غرفة') || c.includes('فراخ')));
+}
+
+async function fetchSheet(gid) {
+  try {
+    const url = sheetUrl(gid);
+    const resp = await fetch(url);
+    if(!resp.ok) return null;
+    const text = await resp.text();
+    if(text.includes('signin') || text.includes('login') || text.length < 100) return null;
+    return parseCSV(text);
+  } catch { return null; }
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n');
+  return lines.map(line => {
+    const cells = [];
+    let inQ = false, cell = '';
+    for(let i=0; i<line.length; i++) {
+      const c = line[i];
+      if(c==='"') { inQ=!inQ; }
+      else if(c===',' && !inQ) { cells.push(cell.trim()); cell=''; }
+      else cell += c;
+    }
+    cells.push(cell.trim());
+    return cells;
+  }).filter(r => r.some(c=>c));
+}
+
+function parseBatches(rows) {
+  BATCHES = [];
+  let dataStart = -1;
+  for(let i=0;i<rows.length;i++) {
+    if(rows[i][0]==='#' || rows[i][1]==='رقم') { dataStart=i+1; break; }
+  }
+  if(dataStart<0) dataStart=1;
+  
+  for(let i=dataStart;i<rows.length;i++) {
+    const r = rows[i];
+    if(!r[1] || !r[2] || r[2]==='544' || isNaN(parseInt(r[0]))) continue;
+    
+    const fr = parseInt(r[5])||0, to = parseInt(r[6])||0;
+    if(fr<=0||to<=0) continue;
+    
+    BATCHES.push({
+      id: r[0], barn: r[1], breed: r[2],
+      date: excelDate(r[3]), age: r[4]||'',
+      from: fr, to: to,
+      pairs_room: parseInt(r[7])||0,
+      total_rooms: parseInt(r[8])||0,
+      occupied: parseInt(r[9])||0,
+      empty: parseInt(r[10])||0,
+      total_pairs: parseInt(r[11])||0,
+      total_mothers: parseInt(r[12])||0,
+      batch_id: r[16]||r[0]
+    });
+  }
+}
+
+function parseEntries(rows) {
+  ENTRIES = [];
+  let dataStart = -1;
+  for(let i=0;i<rows.length;i++) {
+    if(rows[i][0]==='#' || rows[i][1]==='الشهر' || (rows[i][1]&&rows[i][1].includes('شهر'))) { dataStart=i+1; break; }
+  }
+  if(dataStart<0) dataStart=1;
+  
+  for(let i=dataStart;i<rows.length;i++) {
+    const r = rows[i];
+    const month = parseInt(r[1]);
+    const room = parseInt(r[2]);
+    if(!month||!room||isNaN(month)||isNaN(room)) continue;
+    
+    ENTRIES.push({
+      month, room,
+      date: excelDate(r[3]),
+      chicks: parseInt(r[4])||0,
+      dead_male: parseInt(r[5])||0,
+      dead_female: parseInt(r[6])||0,
+      dead_young: parseInt(r[7])||0,
+    });
+  }
+}
+
+function buildMaps() {
+  ROOM_BATCH={};ROOM_BREED={};
+  BATCHES.forEach(b=>{
+    for(let r=b.from;r<=b.to;r++){
+      ROOM_BATCH[r]=b.batch_id;
+      ROOM_BREED[r]=b.breed;
+    }
+  });
+}
+
+function excelDate(v) {
+  if(!v) return '';
+  const n = parseInt(v);
+  if(!isNaN(n) && n>40000) {
+    const d = new Date((n-25569)*86400*1000);
+    return d.toISOString().split('T')[0];
+  }
+  return v;
+}
+
+// ===== HELPERS =====
+function getM() { return parseInt(document.getElementById('gMonth').value); }
+function getMonthE(m) { return ENTRIES.filter(e=>e.month===m); }
+
+function getBarnStats(month) {
+  const entries = getMonthE(month);
+  const map = {};
+  BATCHES.forEach(b=>{
+    map[b.batch_id]={...b,chicks:0,dead_male:0,dead_female:0,dead_young:0};
+  });
+  entries.forEach(e=>{
+    const bid=ROOM_BATCH[e.room];
+    if(bid&&map[bid]){
+      map[bid].chicks+=e.chicks;
+      map[bid].dead_male+=e.dead_male;
+      map[bid].dead_female+=e.dead_female;
+      map[bid].dead_young+=e.dead_young;
+    }
+  });
+  return Object.values(map);
+}
+
+function getRoomStats(month) {
+  const rm={};
+  getMonthE(month).forEach(e=>{
+    if(!rm[e.room])rm[e.room]={chicks:0,dead:0};
+    rm[e.room].chicks+=e.chicks;
+    rm[e.room].dead+=(e.dead_male+e.dead_female+e.dead_young);
+  });
+  return rm;
+}
+
+// ===== RENDER ALL =====
+function renderAll() {
+  const m = getM();
+  const totalPairs = BATCHES.reduce((s,b)=>s+b.total_pairs,0);
+  const totalOccupied = BATCHES.reduce((s,b)=>s+b.occupied,0);
+  const totalRooms = BATCHES.reduce((s,b)=>s+b.total_rooms,0);
+  const totalEmpty = totalRooms - totalOccupied;
+  const uniqueBarns = new Set(BATCHES.map(b=>b.barn)).size;
+
+  // topbar badges
+  document.getElementById('tb1').textContent = MONTHS[m]+' 2026';
+  document.getElementById('tb2').textContent = '🟢 '+ENTRIES.length.toLocaleString('ar')+' سجل';
+  document.getElementById('tb3').textContent = uniqueBarns+' عنبر';
+  document.getElementById('pgSub').textContent = `${BATCHES.length} دفعة | ${totalRooms.toLocaleString('ar')} غرفة | ${totalPairs.toLocaleString('ar')} جوز`;
+  document.getElementById('barnCountBadge').textContent = BATCHES.length;
+  document.getElementById('barnSubtitle').textContent = `${BATCHES.length} دفعة في ${uniqueBarns} عنبراً`;
+
+  // rooms KPIs
+  document.getElementById('rk1').textContent = totalRooms.toLocaleString('ar');
+  document.getElementById('rk2').textContent = totalOccupied.toLocaleString('ar');
+  document.getElementById('rk3').textContent = totalEmpty.toLocaleString('ar');
+  document.getElementById('rk4').textContent = new Set(ENTRIES.map(e=>e.room)).size.toLocaleString('ar');
+
+  // KPIs
+  const entries = getMonthE(m);
+  const chicks=entries.reduce((s,e)=>s+e.chicks,0);
+  const dm=entries.reduce((s,e)=>s+e.dead_male,0);
+  const df=entries.reduce((s,e)=>s+e.dead_female,0);
+  const dy=entries.reduce((s,e)=>s+e.dead_young,0);
+  const dead=dm+df+dy;
+  const rate=totalPairs>0?(chicks/totalPairs).toFixed(4):0;
+
+  document.getElementById('k1').textContent=chicks.toLocaleString('ar');
+  document.getElementById('k1s').textContent=`${rate} فرخ/جوز/شهر`;
+  document.getElementById('k2').textContent=dead.toLocaleString('ar');
+  document.getElementById('k2s').textContent=`ذكور: ${dm} | إناث: ${df} | صغار: ${dy}`;
+  document.getElementById('k3').textContent=totalPairs.toLocaleString('ar');
+  document.getElementById('k3s').textContent=`في ${totalOccupied.toLocaleString('ar')} غرفة مشغولة`;
+  document.getElementById('k4').textContent=totalOccupied.toLocaleString('ar');
+  document.getElementById('k4s').textContent=`${totalEmpty} غرفة شاغرة | ${totalRooms} إجمالي`;
+
+  document.getElementById('dc1s').textContent = MONTHS[m];
+  document.getElementById('dc2s').textContent = MONTHS[m];
+
+  // breed chart
+  const breedChicks={};
+  entries.forEach(e=>{
+    const br=ROOM_BREED[e.room]||'غير معروف';
+    breedChicks[br]=(breedChicks[br]||0)+e.chicks;
+  });
+  const bmax=Math.max(...Object.values(breedChicks),1);
+  const breedColors={'زاجل':'bf-blue','فرنسي':'bf-orange','مكس':'bf-purple'};
+  document.getElementById('breedChart').innerHTML=Object.entries(breedChicks)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([br,c])=>`
+    <div class="bar-row">
+      <div class="bar-lbl">${br}</div>
+      <div class="bar-track"><div class="bar-fill ${breedColors[br]||'bf-green'}" style="width:${Math.max(c/bmax*100,1)}%">${c.toLocaleString('ar')}</div></div>
+    </div>`).join('');
+
+  // barn rank
+  const barnStats=getBarnStats(m);
+  const top8=[...barnStats].sort((a,b)=>b.chicks-a.chicks).slice(0,8);
+  const bmax2=Math.max(...top8.map(b=>b.chicks),1);
+  document.getElementById('barnRankChart').innerHTML=top8.map(b=>`
+    <div class="bar-row">
+      <div class="bar-lbl">عنبر ${b.barn}</div>
+      <div class="bar-track"><div class="bar-fill ${b.breed==='زاجل'?'bf-blue':b.breed==='مكس'?'bf-purple':'bf-orange'}" style="width:${Math.max(b.chicks/bmax2*100,1)}%">${b.chicks}</div></div>
+    </div>`).join('');
+
+  // distribution
+  const dist=[0,0,0,0,0];
+  const rm=getRoomStats(m);
+  Object.values(rm).forEach(r=>{
+    const c=r.chicks;
+    if(c===0)dist[0]++;else if(c<=3)dist[1]++;else if(c<=6)dist[2]++;else if(c<=10)dist[3]++;else dist[4]++;
+  });
+  const dmax=Math.max(...dist,1);
+  const dlbls=['صفر','1-3','4-6','7-10','10+'];
+  document.getElementById('distChart').innerHTML=dist.map((d,i)=>`
+    <div class="bar-row">
+      <div class="bar-lbl">${dlbls[i]} فرخ</div>
+      <div class="bar-track"><div class="bar-fill ${i===0?'bf-blue':'bf-orange'}" style="width:${d/dmax*100}%">${d} غرفة</div></div>
+    </div>`).join('');
+
+  // health
+  document.getElementById('healthDiv').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
+      ${[
+        ['نافق الذكور',dm,(dm/(totalPairs||1)*100).toFixed(3)+'%'],
+        ['نافق الإناث',df,(df/(totalPairs||1)*100).toFixed(3)+'%'],
+        ['نافق الصغار',dy,chicks>0?(dy/chicks*100).toFixed(1)+'% من الإنتاج':'—'],
+        ['معدل الإنتاجية',null,rate+' فرخ/جوز']
+      ].map(([lbl,n,pct])=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg3);border-radius:8px">
+        <span style="font-size:13px">${lbl}</span>
+        <span style="font-weight:700;color:${n===null?'var(--green)':n>0?'var(--red)':'var(--text2)'}">${pct}</span>
+      </div>`).join('')}
+    </div>`;
+
+  // populate month filter for daily
+  const months = [...new Set(ENTRIES.map(e=>e.month))].sort((a,b)=>a-b);
+  const mf = document.getElementById('dailyMonthF');
+  mf.innerHTML='<option value="">كل الأشهر</option>'+months.map(mm=>`<option value="${mm}" ${mm===m?'selected':''}>${MONTHS[mm]}</option>`).join('');
+
+  renderBarns();
+  renderDaily();
+  renderRooms();
+  renderAnnual();
+  renderQuality();
+  renderCompare();
+}
+
+function refreshView() { renderAll(); }
+
+// ===== BARNS =====
+function renderBarns() {
+  const q=(document.getElementById('barnQ').value||'').toLowerCase();
+  const br=document.getElementById('barnBreed').value;
+  const m=getM();
+  const barnStats=getBarnStats(m);
+  const smap={};barnStats.forEach(b=>smap[b.batch_id]=b);
+
+  const filtered=BATCHES.filter(b=>
+    (!q||(b.barn+b.batch_id+b.breed).includes(q))&&(!br||b.breed===br)
+  );
+
+  document.getElementById('barnGrid').innerHTML=filtered.map(b=>{
+    const s=smap[b.batch_id]||{};
+    const rate=b.total_pairs>0?(s.chicks||0)/b.total_pairs:0;
+    const dead=(s.dead_male||0)+(s.dead_female||0)+(s.dead_young||0);
+    const q=rate>=1.5?'⭐⭐⭐':rate>=1?'⭐⭐':rate>=0.5?'⭐':'⚠️';
+    const pct=Math.min(rate/2*100,100);
+    const bc=b.breed==='زاجل'?'bz':b.breed==='مكس'?'bm':'bf';
+    return `<div class="barn-card" onclick="showBarnModal('${b.batch_id}')">
+      <div class="bc-head">
+        <div><div class="bc-name">عنبر ${b.barn} — ${b.batch_id}</div><div class="bc-sub">${b.age} | غرف ${b.from}–${b.to}</div></div>
+        <span class="breed-tag ${bc}">${b.breed}</span>
+      </div>
+      <div class="bc-stats">
+        <div class="bc-stat"><div class="bc-stat-lbl">🐣 فراخ</div><div class="bc-stat-val orange">${(s.chicks||0).toLocaleString('ar')}</div></div>
+        <div class="bc-stat"><div class="bc-stat-lbl">💀 نافق</div><div class="bc-stat-val red">${dead}</div></div>
+        <div class="bc-stat"><div class="bc-stat-lbl">🕊️ أجواز</div><div class="bc-stat-val blue">${b.total_pairs.toLocaleString('ar')}</div></div>
+        <div class="bc-stat"><div class="bc-stat-lbl">📊 تقييم</div><div class="bc-stat-val" style="font-size:13px">${q}</div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="prog-lbl"><span>${rate.toFixed(3)} فرخ/جوز</span><span>${b.occupied} غرفة</span></div>
+        <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showBarnModal(bid) {
+  const batch=BATCHES.find(b=>b.batch_id===bid);if(!batch)return;
+  const m=getM();
+  const entries=getMonthE(m).filter(e=>ROOM_BATCH[e.room]===bid);
+  const chicks=entries.reduce((s,e)=>s+e.chicks,0);
+  const dm=entries.reduce((s,e)=>s+e.dead_male,0);
+  const df=entries.reduce((s,e)=>s+e.dead_female,0);
+  const dy=entries.reduce((s,e)=>s+e.dead_young,0);
+  const rate=batch.total_pairs>0?chicks/batch.total_pairs:0;
+  const bc=batch.breed==='زاجل'?'bz':batch.breed==='مكس'?'bm':'bf';
+
+  document.getElementById('modalBody').innerHTML=`
+    <div class="modal-title">🏠 عنبر ${batch.barn} — دفعة ${batch.batch_id}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      ${[['السلالة',`<span class="breed-tag ${bc}">${batch.breed}</span>`],
+         ['العمر',batch.age],
+         ['الغرف',`${batch.from} – ${batch.to} (${batch.total_rooms} غرفة)`],
+         ['الأجواز',batch.total_pairs.toLocaleString('ar')]
+        ].map(([l,v])=>`
+      <div style="background:var(--bg3);padding:10px;border-radius:8px">
+        <div style="font-size:10px;color:var(--text2)">${l}</div>
+        <div style="font-size:15px;font-weight:700;margin-top:4px">${v}</div>
+      </div>`).join('')}
+    </div>
+    <div style="background:rgba(240,136,62,.08);border:1px solid rgba(240,136,62,.2);padding:14px;border-radius:10px;margin-bottom:14px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px">أداء ${MONTHS[m]}</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        ${[['🐣 فراخ',chicks,'var(--accent)'],['💀 ذكور',dm,'var(--red)'],
+           ['💀 إناث',df,'var(--red)'],['🐥 صغار',dy,'var(--yellow)']
+          ].map(([l,n,c])=>`
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:900;color:${c}">${n}</div>
+          <div style="font-size:10px;color:var(--text2)">${l}</div>
+        </div>`).join('')}
+      </div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;justify-content:space-between">
+        <span style="font-size:13px">معدل الإنتاجية</span>
+        <span style="font-weight:800;color:var(--green)">${rate.toFixed(4)} فرخ/جوز</span>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:8px">أعلى غرف إنتاجاً</div>
+    ${entries.sort((a,b)=>b.chicks-a.chicks).slice(0,8).map(e=>`
+    <div style="display:flex;justify-content:space-between;padding:5px 10px;background:var(--bg3);border-radius:6px;margin-bottom:3px">
+      <span style="font-size:12px">غرفة ${e.room}</span>
+      <span style="font-weight:700;color:var(--green)">${e.chicks} 🐣 ${(e.dead_male+e.dead_female+e.dead_young)>0?'| 💀'+(e.dead_male+e.dead_female+e.dead_young):''}</span>
+    </div>`).join('')}
+  `;
+  document.getElementById('modalOv').classList.add('open');
+}
+
+// ===== DAILY =====
+function renderDaily() {
+  const q=document.getElementById('dailyQ').value;
+  const mf=document.getElementById('dailyMonthF').value;
+  const tf=document.getElementById('dailyTypeF').value;
+
+  filteredEntries=ENTRIES.filter(e=>{
+    if(mf&&e.month!=mf)return false;
+    if(q&&!String(e.room).includes(q))return false;
+    if(tf==='chicks'&&!(e.chicks>0))return false;
+    if(tf==='dead'&&!((e.dead_male+e.dead_female+e.dead_young)>0))return false;
+    return true;
+  });
+
+  document.getElementById('dailySubtitle').textContent=`${filteredEntries.length.toLocaleString('ar')} سجل`;
+  const page=filteredEntries.slice(dailyPage*PAGE_SIZE,(dailyPage+1)*PAGE_SIZE);
+  const totalP=Math.ceil(filteredEntries.length/PAGE_SIZE);
+
+  document.getElementById('dailyBody').innerHTML=page.map((e,i)=>{
+    const br=ROOM_BREED[e.room]||'';
+    const bid=ROOM_BATCH[e.room]||'';
+    const bc=br==='زاجل'?'bz':br==='مكس'?'bm':'bf';
+    return `<tr>
+      <td style="color:var(--text2)">${dailyPage*PAGE_SIZE+i+1}</td>
+      <td>${MONTHS[e.month]}</td>
+      <td class="num">${e.room}</td>
+      <td style="font-size:11px;color:var(--text2)">${e.date}</td>
+      <td class="num" style="color:${e.chicks>0?'var(--green)':'var(--text2)'}">${e.chicks}</td>
+      <td class="num" style="color:${e.dead_male>0?'var(--red)':'var(--text2)'}">${e.dead_male}</td>
+      <td class="num" style="color:${e.dead_female>0?'var(--red)':'var(--text2)'}">${e.dead_female}</td>
+      <td class="num" style="color:${e.dead_young>0?'var(--yellow)':'var(--text2)'}">${e.dead_young}</td>
+      <td style="font-size:11px">${bid}</td>
+      <td><span class="breed-tag ${bc}">${br}</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('dailyPagInfo').textContent=
+    `${dailyPage*PAGE_SIZE+1}–${Math.min((dailyPage+1)*PAGE_SIZE,filteredEntries.length)} من ${filteredEntries.length.toLocaleString('ar')}`;
+
+  const btns=document.getElementById('dailyPagBtns');
+  btns.innerHTML='';
+  const s=Math.max(0,dailyPage-2),end=Math.min(totalP,s+5);
+  if(dailyPage>0){const b=document.createElement('button');b.className='pbtn';b.textContent='‹';b.onclick=()=>{dailyPage--;renderDaily()};btns.appendChild(b);}
+  for(let p=s;p<end;p++){const b=document.createElement('button');b.className='pbtn'+(p===dailyPage?' active':'');b.textContent=p+1;b.onclick=(pp=>()=>{dailyPage=pp;renderDaily()})(p);btns.appendChild(b);}
+  if(dailyPage<totalP-1){const b=document.createElement('button');b.className='pbtn';b.textContent='›';b.onclick=()=>{dailyPage++;renderDaily()};btns.appendChild(b);}
+}
+
+// ===== ROOMS =====
+function renderRooms() {
+  const m=getM();
+  const rm=getRoomStats(m);
+  const maxRoom=BATCHES.reduce((mx,b)=>Math.max(mx,b.to),0);
+  let html='';
+  for(let r=1;r<=maxRoom;r++){
+    const s=rm[r]||{chicks:0,dead:0};
+    let cls='';
+    if(s.chicks>0&&s.dead>0)cls='rc-both';
+    else if(s.chicks>0)cls='rc-prod';
+    else if(s.dead>0)cls='rc-dead';
+    html+=`<div class="room-cell ${cls}" onclick="showRoomModal(${r})" title="غرفة ${r}">
+      <div class="rc-num">${r}</div>
+      <div class="rc-val">${s.chicks||'·'}</div>
+      ${s.dead>0?`<div class="rc-dead-v">💀${s.dead}</div>`:''}
+    </div>`;
+  }
+  document.getElementById('roomsGrid').innerHTML=html;
+}
+
+function showRoomModal(room) {
+  const entries=ENTRIES.filter(e=>e.room===room);
+  const batch=BATCHES.find(b=>room>=b.from&&room<=b.to);
+  const bc=batch?.breed==='زاجل'?'bz':batch?.breed==='مكس'?'bm':'bf';
+  document.getElementById('modalBody').innerHTML=`
+    <div class="modal-title">🏡 غرفة ${room}</div>
+    ${batch?`<div style="margin-bottom:12px"><span class="breed-tag ${bc}">${batch.breed}</span><span style="margin-right:8px;font-size:12px;color:var(--text2)">عنبر ${batch.barn} — ${batch.batch_id} | ${batch.age}</span></div>`:''}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+      ${entries.map(e=>`
+      <div style="background:var(--bg3);padding:9px;border-radius:8px;text-align:center">
+        <div style="font-size:10px;color:var(--text2)">${MONTHS[e.month]}</div>
+        <div style="font-size:20px;font-weight:900;color:var(--green)">${e.chicks}</div>
+        ${(e.dead_male+e.dead_female+e.dead_young)>0?
+          `<div style="font-size:10px;color:var(--red)">💀${e.dead_male+e.dead_female+e.dead_young}</div>`:''}
+      </div>`).join('')}
+    </div>`;
+  document.getElementById('modalOv').classList.add('open');
+}
+
+// ===== ANNUAL =====
+function renderAnnual() {
+  const totalPairs=BATCHES.reduce((s,b)=>s+b.total_pairs,0);
+  let html='',tC=0,tDm=0,tDf=0,tDy=0;
+  for(let m=1;m<=12;m++){
+    const e=getMonthE(m);
+    const c=e.reduce((s,x)=>s+x.chicks,0);
+    const dm=e.reduce((s,x)=>s+x.dead_male,0);
+    const df=e.reduce((s,x)=>s+x.dead_female,0);
+    const dy=e.reduce((s,x)=>s+x.dead_young,0);
+    const rate=totalPairs>0?c/totalPairs:0;
+    const cz=e.filter(x=>ROOM_BREED[x.room]==='زاجل').reduce((s,x)=>s+x.chicks,0);
+    const cf=e.filter(x=>ROOM_BREED[x.room]==='فرنسي').reduce((s,x)=>s+x.chicks,0);
+    const cm=e.filter(x=>ROOM_BREED[x.room]==='مكس').reduce((s,x)=>s+x.chicks,0);
+    tC+=c;tDm+=dm;tDf+=df;tDy+=dy;
+    const q=c>0?(rate>=1.5?'⭐⭐⭐':rate>=1?'⭐⭐':rate>=0.5?'⭐':'⚠️'):'—';
+    const cls=c>0?'h-hi':dm+df+dy>0?'h-lo':'';
+    html+=`<tr>
+      <td class="m-col">${MONTHS[m]}</td>
+      <td class="${cls} num">${c||'—'}</td>
+      <td>${c>0?rate.toFixed(4):'—'}</td>
+      <td>${q}</td>
+      <td class="num ${dm>0?'h-lo':''}">${dm||'—'}</td>
+      <td class="num ${df>0?'h-lo':''}">${df||'—'}</td>
+      <td class="num ${dy>0?'h-mi':''}">${dy||'—'}</td>
+      <td class="num">${dm+df+dy||'—'}</td>
+      <td>${cz||'—'}</td><td>${cf||'—'}</td><td>${cm||'—'}</td>
+    </tr>`;
+  }
+  html+=`<tr class="tot-row">
+    <td class="m-col">الإجمالي</td>
+    <td class="num h-hi">${tC.toLocaleString('ar')}</td>
+    <td>${(tC/(totalPairs||1)).toFixed(4)}</td><td>—</td>
+    <td class="num">${tDm||'—'}</td><td class="num">${tDf||'—'}</td>
+    <td class="num">${tDy||'—'}</td><td class="num">${tDm+tDf+tDy||'—'}</td>
+    <td>—</td><td>—</td><td>—</td>
+  </tr>`;
+  document.getElementById('annualBody').innerHTML=html;
+}
+
+// ===== QUALITY =====
+function renderQuality() {
+  const m=getM();
+  const bs=getBarnStats(m);
+  let q3=0,q2=0,q1=0,q0=0;
+  const cards=bs.map(b=>{
+    const rate=b.total_pairs>0?b.chicks/b.total_pairs:0;
+    const dead=(b.dead_male||0)+(b.dead_female||0)+(b.dead_young||0);
+    const q=rate>=1.5?'⭐⭐⭐ ممتاز':rate>=1?'⭐⭐ جيد':rate>=0.5?'⭐ مقبول':'⚠️ ضعيف';
+    if(rate>=1.5)q3++;else if(rate>=1)q2++;else if(rate>=0.5)q1++;else q0++;
+    const bc=b.breed==='زاجل'?'bz':b.breed==='مكس'?'bm':'bf';
+    return `<div class="q-card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;font-weight:700">${b.batch_id}</span>
+        <span style="font-size:13px">${q}</span>
+      </div>
+      <div class="q-row"><span class="q-lbl">العنبر</span><span>${b.barn}</span></div>
+      <div class="q-row"><span class="q-lbl">السلالة</span><span class="breed-tag ${bc}">${b.breed}</span></div>
+      <div class="q-row"><span class="q-lbl">🐣 فراخ</span><span style="font-weight:700;color:var(--accent)">${b.chicks}</span></div>
+      <div class="q-row"><span class="q-lbl">فرخ/جوز</span><span style="font-weight:700;color:var(--green)">${rate.toFixed(3)}</span></div>
+      <div class="q-row"><span class="q-lbl">💀 نافق</span><span style="font-weight:700;color:${dead>0?'var(--red)':'var(--text2)'}">${dead}</span></div>
+    </div>`;
+  });
+  document.getElementById('qq3').textContent=q3;
+  document.getElementById('qq2').textContent=q2;
+  document.getElementById('qq1').textContent=q1;
+  document.getElementById('qq0').textContent=q0;
+  document.getElementById('qualityGrid').innerHTML=cards.join('');
+}
+
+// ===== COMPARE =====
+function renderCompare() {
+  const m=getM();
+  const sortBy=document.getElementById('sortBy').value;
+  const bs=getBarnStats(m).map(b=>({
+    ...b,
+    rate:b.total_pairs>0?b.chicks/b.total_pairs:0,
+    dead_total:(b.dead_male||0)+(b.dead_female||0)+(b.dead_young||0),
+    dead_rate:b.total_pairs>0?((b.dead_male||0)+(b.dead_female||0))/(b.total_pairs)*100:0
+  }));
+  bs.sort((a,b)=>sortBy==='chicks'?b.chicks-a.chicks:sortBy==='rate'?b.rate-a.rate:b.dead_rate-a.dead_rate);
+  const active=bs.filter(b=>b.chicks>0);
+  const avg=active.length?active.reduce((s,b)=>s+b.rate,0)/active.length:0;
+  const bc=b=>b.breed==='زاجل'?'bz':b.breed==='مكس'?'bm':'bf';
+  document.getElementById('compareBody').innerHTML=bs.map((b,i)=>{
+    const q=b.rate>=1.5?'⭐⭐⭐':b.rate>=1?'⭐⭐':b.rate>=0.5?'⭐':'⚠️';
+    const tr=b.rate>=avg*1.15?'▲▲':b.rate>=avg?'▲':b.rate>=avg*0.85?'≈':'▼';
+    return `<tr>
+      <td style="font-weight:700;color:${i<3?'var(--accent)':'var(--text2)'}">${i+1}</td>
+      <td style="font-weight:700">${b.batch_id}</td>
+      <td>${b.barn}</td>
+      <td><span class="breed-tag ${bc(b)}">${b.breed}</span></td>
+      <td class="num orange">${b.chicks}</td>
+      <td class="num green">${b.rate.toFixed(4)}</td>
+      <td class="num blue">${b.total_pairs.toLocaleString('ar')}</td>
+      <td class="num ${b.dead_total>0?'red':''}">${b.dead_total}</td>
+      <td class="num">${b.dead_rate.toFixed(3)}%</td>
+      <td>${q} <span style="font-size:10px;color:var(--text2)">${tr}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ===== NAV =====
+const PAGE_TITLES={
+  dashboard:'لوحة التحكم',barns:'العنابر والدفعات',daily:'الإدخال اليومي',
+  rooms:'خريطة الغرف',annual:'الملخص السنوي',quality:'تقرير الجودة',compare:'مقارنة العنابر'
+};
+function nav(name,el) {
+  currentSection=name;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('pgTitle').textContent=PAGE_TITLES[name];
+  dailyPage=0;
+}
+
+// ===== MODAL =====
+function closeModal(){document.getElementById('modalOv').classList.remove('open')}
+
+// ===== LOADING UI =====
+function setStep(msg,pct){
+  document.getElementById('loadStep').textContent=msg;
+  document.getElementById('progBar').style.width=pct+'%';
+}
+function showLoad(){
+  document.getElementById('loadScreen').style.display='flex';
+  document.getElementById('errorScreen').style.display='none';
+  document.getElementById('app').style.display='none';
+}
+function showApp(){
+  document.getElementById('loadScreen').style.display='none';
+  document.getElementById('errorScreen').style.display='none';
+  document.getElementById('app').style.display='flex';
+}
+function showError(msg){
+  document.getElementById('loadScreen').style.display='none';
+  document.getElementById('errorScreen').style.display='flex';
+  document.getElementById('errMsg').textContent=msg||'تأكد من إعدادات المشاركة في Google Sheets';
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+// ===== START =====
+loadData();
+</script>
+</body>
+</html>
